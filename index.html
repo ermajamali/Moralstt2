@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Guru Ganti PPKI - Anti-Clash Tegar & Tepat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #004d40;
+            --secondary-color: #00251a;
+            --bg-color: #f8f9fa;
+            --whatsapp-color: #25d366;
+            --danger-color: #c62828;
+        }
+
+        body { font-family: 'Poppins', sans-serif; background-color: var(--bg-color); margin: 0; padding: 0; }
+        header {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+            color: white; padding: 25px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        header img { width: 70px; margin-bottom: 10px; }
+        .container { max-width: 1000px; margin: 30px auto; padding: 25px; background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; background: #f1f3f4; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--primary-color); margin-bottom: 5px; }
+        select, input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: 'Poppins'; font-size: 0.9rem; }
+        button { cursor: pointer; border: none; border-radius: 6px; padding: 12px 20px; font-weight: 600; transition: 0.3s; }
+        .btn-add { background: var(--primary-color); color: white; width: 100%; }
+        .action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
+        .btn-pdf { background: var(--danger-color); color: white; font-size: 1.1rem; }
+        .btn-whatsapp { background: var(--whatsapp-color); color: white; font-size: 1.1rem; }
+        .absent-card { border: 1px solid #ddd; border-radius: 10px; margin-top: 25px; overflow: hidden; }
+        .absent-header { background: #e0f2f1; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th { background: var(--primary-color); color: white; padding: 12px; text-align: left; font-size: 0.9rem; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        .relief-select { width: 100%; padding: 5px; border: 1px solid #00796b; border-radius: 4px; background: #f0fdfa; font-family: 'Poppins'; }
+        footer { text-align: center; padding: 30px; color: #777; font-size: 0.75rem; border-top: 1px solid #eee; margin-top: 20px; }
+        .btn-del-row { background: #ffcdd2; color: #b71c1c; padding: 5px 10px; font-size: 0.7rem; }
+        .status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: #e0f2f1; color: #004d40; font-weight: bold; margin-top: 5px; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<header>
+    <img src="https://i.postimg.cc/GtGz98Ds/logo-sekolah.jpg" alt="Logo">
+    <div style="letter-spacing: 1px; font-weight: 300;">PENGURUSAN KURIKULUM PPKI</div>
+    <div style="font-size: 1.8rem; font-weight: 700;">Sistem Guru Ganti</div>
+</header>
+
+<div class="container">
+    <div class="form-grid">
+        <div class="form-group">
+            <label>Tarikh</label>
+            <input type="date" id="inputDate" onchange="updateDay()">
+        </div>
+        <div class="form-group">
+            <label>Hari</label>
+            <input type="text" id="inputDay" readonly placeholder="Auto-pilih tarikh" style="background: #e9ecef;">
+        </div>
+        <div class="form-group">
+            <label>Nama Guru Tidak Hadir</label>
+            <select id="inputName"></select>
+        </div>
+        <div class="form-group">
+            <label>Sebab</label>
+            <select id="inputReason">
+                <option>Cuti Rehat Khas</option><option>Mc</option><option>Mesyuarat</option><option>Kursus</option><option>Cuti Anak Sakit</option><option>Program</option><option>Urusan Rasmi</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select id="inputStatus">
+                <option value="Perlu">Perlu Diganti</option>
+                <option value="Tidak">Tidak Perlu</option>
+            </select>
+        </div>
+    </div>
+    <button class="btn-add" onclick="addAbsence()">Jana Jadual Ganti</button>
+
+    <div id="displayArea"></div>
+
+    <div class="action-buttons">
+        <button class="btn-pdf" onclick="generatePDF()">Muat Turun PDF</button>
+        <button class="btn-whatsapp" onclick="copyWhatsApp()">Salin untuk WhatsApp</button>
+    </div>
+</div>
+
+<footer>
+    @Kurikulum PPKI SK Taman Tuanku Jaafar
+</footer>
+
+<script>
+    const teachers = ["ERMA MARZUANA", "HAMLINA", "IRWAN MUHAMMAD SHAH", "KATIJAH", "MASIRAH", "NOOR AZIAWATI", "NOOR AZILLAH", "NOR ERMA HUSNA", "NURUL UMMI", "PKPK", "SUHANA", "SURYATY", "ZATIL RUFAIDAH"].sort();
+
+    const schedule = {
+        "PKPK": { 
+            "ISNIN": {"9.30 - 10.00": "PK (6S)", "10.00 - 10.30": "PK (6S)"}, 
+            "SELASA": {"12.00 - 12.30": "PSSAS (6S)", "12.30 - 1.00": "PSSAS (6S)"}, 
+            "RABU": {"7.40 - 8.10": "PSSAS (6S)", "8.10 - 8.40": "PSSAS (6S)", "9.30 - 10.00": "MORAL (5S/2H)", "10.00 - 10.30": "MORAL (5S/2H)", "10.30 - 11.00": "PK (6S)", "11.00 - 11.30": "PK (6S)"}, 
+            "KHAMIS": {"9.30 - 10.00": "MORAL (5S/2H)", "11.00 - 11.30": "PK (6S)"}, 
+            "JUMAAT": {"10.30 - 11.00": "MORAL (5S/2H)", "11.00 - 11.30": "MORAL (5S/2H)"} 
+        },
+        "HAMLINA": { 
+            "ISNIN": {"8.10 - 8.40": "PAI (6S)", "8.40 - 9.10": "PAI (6S)", "9.30 - 10.00": "PAI (4H)", "10.00 - 10.30": "PAI (4H)", "10.30 - 11.00": "PAI (3S)"}, 
+            "SELASA": {"8.40 - 9.10": "PAI (6S)", "9.30 - 10.00": "PK (5S)", "10.00 - 10.30": "PK (5S)", "11.00 - 11.30": "PAI (4H)", "11.30 - 12.00": "PAI (4H)"}, 
+            "RABU": {"7.40 - 8.10": "PAI (3S)", "9.30 - 10.00": "PAI (5S)", "10.00 - 10.30": "PAI (5S)", "10.30 - 11.00": "PAI (3S)", "11.30 - 12.00": "PAI (4H)"}, 
+            "KHAMIS": {"7.40 - 8.10": "PAI (3S)", "8.10 - 8.40": "PAI (3S)", "9.30 - 10.00": "PAI (3S)", "10.00 - 10.30": "PK (5S)", "11.30 - 12.00": "PAI (6S)", "12.00 - 12.30": "PAI (6S)"}, 
+            "JUMAAT": {"9.30 - 10.00": "PK (5S)", "10.00 - 10.30": "PK (5S)", "10.30 - 11.00": "PAI (5S)", "11.00 - 11.30": "PAI (5S)"} 
+        },
+        "NOOR AZILLAH": { 
+            "ISNIN": {"8.10 - 8.40": "PAI (4S)", "8.40 - 9.10": "PAI (4S)", "11.00 - 11.30": "PAI (1S)", "11.30 - 12.00": "PAI (1S)", "12.00 - 12.30": "PK (4S)", "12.30 - 1.00": "PK (4S)"}, 
+            "SELASA": {"8.10 - 8.40": "PAI (PRA)", "8.40 - 9.10": "PAI (PRA)", "9.30 - 10.00": "PAI (4S)", "11.00 - 11.30": "PAI (4S)", "11.30 - 12.00": "PAI (4S)", "12.00 - 12.30": "PK (4S)", "12.30 - 1.00": "PK (4S)"}, 
+            "RABU": {"7.40 - 8.10": "PAI (2S)", "8.10 - 8.40": "PAI (2S)", "9.30 - 10.00": "PAI (2H)", "10.00 - 10.30": "PAI (2H)", "11.30 - 12.00": "PK (4S)"}, 
+            "KHAMIS": {"8.40 - 9.10": "PAI (2S)", "9.30 - 10.00": "PAI (2H)", "10.30 - 11.00": "PAI (1S)", "11.00 - 11.30": "PAI (2S)", "11.30 - 12.00": "PAI (2S)"}, 
+            "JUMAAT": {"8.10 - 8.40": "PAI (PRA)", "8.40 - 9.10": "PAI (PRA)", "9.30 - 10.00": "PAI (1S)", "10.00 - 10.30": "PAI (1S)", "10.30 - 11.00": "PAI (2H)", "11.00 - 11.30": "PAI (2H)"} 
+        },
+        "ERMA MARZUANA": {
+            "ISNIN": {"9.30 - 10.00": "BM (4S)", "10.00 - 10.30": "BM (4S)", "10.30 - 11.00": "PK (2S)", "11.00 - 11.30": "PK (2S)", "11.30 - 12.00": "PK (2S)"},
+            "SELASA": {"7.40 - 8.10": "1M1S", "8.10 - 8.40": "1M1S", "8.40 - 9.10": "BM (4S)", "9.30 - 10.00": "PK (2S)", "10.00 - 10.30": "PK (2S)"},
+            "RABU": {"8.40 - 9.10": "PJK (6S)", "9.30 - 10.00": "BM (4S)", "10.00 - 10.30": "BM (4S)", "10.30 - 11.00": "PK (2S)", "11.00 - 11.30": "PK (2S)"},
+            "KHAMIS": {"8.10 - 8.40": "PJK (6S)", "8.40 - 9.10": "PJK (6S)", "9.30 - 10.00": "PK (2S)", "10.00 - 10.30": "PK (2S)", "10.30 - 11.00": "PK (2S)", "11.30 - 12.00": "KH (4S)", "12.00 - 12.30": "KH (4S)"},
+            "JUMAAT": {"7.40 - 8.10": "KH (4S)", "8.10 - 8.40": "KH (4S)", "8.40 - 9.10": "KH (4S)", "9.30 - 10.00": "PK (2S)", "10.00 - 10.30": "PK (2S)"}
+        },
+        "NOOR AZIAWATI": {
+            "ISNIN": {"10.00 - 10.30": "PSSAS (5S)", "11.00 - 11.30": "TMK (4S)", "11.30 - 12.00": "TMK (4S)", "12.00 - 12.30": "KH (6S)", "12.30 - 1.00": "KH (6S)"},
+            "SELASA": {"7.40 - 8.10": "1M1S", "8.10 - 8.40": "1M1S", "8.40 - 9.10": "PJK (4H)", "9.30 - 10.00": "PSK (1S)", "10.00 - 10.30": "PSK (1S)", "10.30 - 11.00": "PSK (1S)"},
+            "RABU": {"7.40 - 8.10": "PJK (4H)", "9.30 - 10.00": "PSK (1S)", "10.00 - 10.30": "PSK (1S)", "10.30 - 11.00": "PSSAS (4S)", "11.00 - 11.30": "PSSAS (4S)"},
+            "KHAMIS": {"8.40 - 9.10": "PJK (4H)", "9.30 - 10.00": "PSK (1S)", "10.00 - 10.30": "PSK (1S)", "10.30 - 11.00": "PSSAS (5S)", "11.00 - 11.30": "PSSAS (5S)"},
+            "JUMAAT": {"7.40 - 8.10": "KH (6S)", "8.10 - 8.40": "KH (6S)", "8.40 - 9.10": "KH (6S)", "10.30 - 11.00": "PSSAS (4S)", "11.00 - 11.30": "PSSAS (4S)"}
+        },
+        "SUHANA": {
+            "ISNIN": {"8.10 - 8.40": "PSK (3S)", "8.40 - 9.10": "PSK (3S)", "9.30 - 10.00": "PK (2H)", "10.00 - 10.30": "PK (2H)", "10.30 - 11.00": "PK (2H)"},
+            "SELASA": {"7.40 - 8.10": "PSK (3S)", "8.10 - 8.40": "PSK (3S)", "8.40 - 9.10": "PK (2H)", "10.30 - 11.00": "PK (2H)", "11.00 - 11.30": "PK (2H)", "11.30 - 12.00": "PK (2H)"},
+            "RABU": {"7.40 - 8.10": "PK (2H)", "10.30 - 11.00": "BI (5S)", "11.00 - 11.30": "BI (5S)", "11.30 - 12.00": "PK (2H)"},
+            "KHAMIS": {"7.40 - 8.10": "PK (2H)", "8.10 - 8.40": "PK (2H)", "10.30 - 11.00": "BI (4H)", "11.00 - 11.30": "BI (4H)", "11.30 - 12.00": "BI (5S)", "12.00 - 12.30": "BI (5S)"},
+            "JUMAAT": {"7.40 - 8.10": "PSK (3S)", "8.10 - 8.40": "PSK (3S)", "8.40 - 9.10": "PSK (3S)", "9.30 - 10.00": "BI (4H)", "10.00 - 10.30": "BI (4H)"}
+        },
+        "SURYATY": {
+            "ISNIN": {"8.10 - 8.40": "3M (2H)", "8.40 - 9.10": "3M (2H)", "10.30 - 11.00": "PSV (5S)", "11.00 - 11.30": "PSV (5S)", "11.30 - 12.00": "MT (4H)", "12.00 - 12.30": "MT (4H)"},
+            "SELASA": {"7.40 - 8.10": "1M1S", "8.10 - 8.40": "1M1S", "9.30 - 10.00": "3M (2H)", "10.00 - 10.30": "3M (2H)", "10.30 - 11.00": "PK (4H)", "12.00 - 12.30": "MT (5S)", "12.30 - 1.00": "MT (5S)"},
+            "RABU": {"8.10 - 8.40": "MT (5S)", "8.40 - 9.10": "MT (5S)", "10.30 - 11.00": "3M (2H)", "11.00 - 11.30": "3M (2H)"},
+            "KHAMIS": {"7.40 - 8.10": "PK (4H)", "8.10 - 8.40": "PK (4H)", "10.00 - 10.30": "3M (2H)", "10.30 - 11.00": "3M (2H)", "11.30 - 12.00": "MT (4H)", "12.00 - 12.30": "MT (4H)"},
+            "JUMAAT": {"9.30 - 10.00": "3M (2H)", "10.00 - 10.30": "3M (2H)", "10.30 - 11.00": "PK (4H)", "11.00 - 11.30": "PK (4H)"}
+        },
+        "ZATIL RUFAIDAH": {
+            "ISNIN": {"8.10 - 8.40": "PSK (2S)", "8.40 - 9.10": "PSK (2S)", "10.30 - 11.00": "MZ (4S)", "11.00 - 11.30": "MT (6S)", "11.30 - 12.00": "MT (6S)"},
+            "SELASA": {"8.40 - 9.10": "PSK (2S)", "11.00 - 11.30": "TMK (5S)", "11.30 - 12.00": "TMK (5S)", "12.00 - 12.30": "TMK (4H)", "12.30 - 1.00": "TMK (4H)"},
+            "RABU": {"7.40 - 8.10": "PJK (4S)", "8.40 - 9.10": "PSK (2S)", "9.30 - 10.00": "MT (6S)", "10.00 - 10.30": "MT (6S)", "11.30 - 12.00": "PSK (2S)"},
+            "KHAMIS": {"7.40 - 8.10": "MZ (4S)", "8.10 - 8.40": "PJK (4S)", "8.40 - 9.10": "PJK (4S)", "9.30 - 10.00": "PSV (4H)", "10.00 - 10.30": "PSV (4H)", "10.30 - 11.00": "MT (4S)", "11.00 - 11.30": "MT (4S)"},
+            "JUMAAT": {"9.30 - 10.00": "MT (4S)", "10.00 - 10.30": "MT (4S)", "10.30 - 11.00": "PSK (2S)", "11.00 - 11.30": "PSK (2S)"}
+        },
+        "KATIJAH": {
+            "ISNIN": {"8.10 - 8.40": "BM (4H)", "8.40 - 9.10": "BM (4H)", "9.30 - 10.00": "PK (1S)", "10.00 - 10.30": "PK (1S)", "10.30 - 11.00": "PK (1S)", "12.30 - 1.00": "MZ (4H)"},
+            "SELASA": {"7.40 - 8.10": "PK (1S)", "8.10 - 8.40": "PK (1S)", "8.40 - 9.10": "PK (1S)", "10.30 - 11.00": "MZ (6S)", "11.00 - 11.30": "BM (6S)", "11.30 - 12.00": "BM (6S)"},
+            "RABU": {"8.10 - 8.40": "MZ (4H)", "8.40 - 9.10": "BM (4H)", "9.30 - 10.00": "BM (4H)", "10.00 - 10.30": "BM (4H)", "10.30 - 11.00": "PK (1S)", "11.30 - 12.00": "BM (6S)"},
+            "KHAMIS": {"7.40 - 8.10": "MZ (6S)", "11.00 - 11.30": "PK (1S)", "11.30 - 12.00": "PK (1S)"},
+            "JUMAAT": {"7.40 - 8.10": "PK (1S)", "8.10 - 8.40": "PK (1S)", "8.40 - 9.10": "PK (1S)", "10.30 - 11.00": "BM (6S)", "11.00 - 11.30": "BM (6S)"}
+        },
+        "IRWAN MUHAMMAD SHAH": {
+            "ISNIN": {"10.30 - 11.00": "TMK (6S)", "11.00 - 11.30": "PK (3S)", "11.30 - 12.00": "PK (3S)", "12.00 - 12.30": "KH (5S)", "12.30 - 1.00": "KH (5S)"},
+            "SELASA": {"8.40 - 9.10": "PJK (3S)", "9.30 - 10.00": "PK (3S)", "10.00 - 10.30": "PK (3S)", "10.30 - 11.00": "PK (3S)"},
+            "RABU": {"7.40 - 8.10": "PJK (5S)", "8.10 - 8.40": "PJK (3S)", "8.40 - 9.10": "PJK (3S)", "10.30 - 11.00": "PK (3S)", "11.00 - 11.30": "PK (3S)", "11.30 - 12.00": "PK (3S)"},
+            "KHAMIS": {"7.40 - 8.10": "PJK (5S)", "8.10 - 8.40": "PJK (5S)", "8.40 - 9.10": "PJK (3S)", "9.30 - 10.00": "TMK (6S)", "10.30 - 11.00": "PK (3S)", "11.00 - 11.30": "PK (3S)", "11.30 - 12.00": "PK (3S)"},
+            "JUMAAT": {"7.40 - 8.10": "KH (5S)", "8.10 - 8.40": "KH (5S)", "8.40 - 9.10": "KH (5S)", "9.30 - 10.00": "PK (3S)", "10.00 - 10.30": "PK (3S)"}
+        },
+        "NOR ERMA HUSNA": {
+            "ISNIN": {"9.30 - 10.00": "3M (2S)", "10.00 - 10.30": "3M (2S)", "10.30 - 11.00": "PSSAS (4H)", "11.00 - 11.30": "PSSAS (4H)"},
+            "SELASA": {"7.40 - 8.10": "PJK (2S)", "8.10 - 8.40": "PJK (2S)", "9.30 - 10.00": "BI (6S)", "10.00 - 10.30": "BI (6S)", "10.30 - 11.00": "3M (2S)", "11.00 - 11.30": "3M (2S)", "11.30 - 12.00": "3M (2S)"},
+            "RABU": {"8.10 - 8.40": "BI (4S)", "8.40 - 9.10": "BI (4S)", "9.30 - 10.00": "3M (2S)", "10.00 - 10.30": "3M (2S)", "10.30 - 11.00": "PSSAS (4H)", "11.00 - 11.30": "PSSAS (4H)"},
+            "KHAMIS": {"7.40 - 8.10": "PJK (2S)", "8.10 - 8.40": "PJK (2S)", "9.30 - 10.00": "BI (4S)", "10.00 - 10.30": "BI (4S)"},
+            "JUMAAT": {"7.40 - 8.10": "3M (2S)", "8.10 - 8.40": "3M (2S)", "8.40 - 9.10": "3M (2S)", "9.30 - 10.00": "BI (6S)", "10.00 - 10.30": "BI (6S)"}
+        },
+        "MASIRAH": {
+            "ISNIN": {"8.10 - 8.40": "BM (5S)", "8.40 - 9.10": "BM (5S)", "9.30 - 10.00": "3M (3S)", "10.00 - 10.30": "3M (3S)", "11.30 - 12.00": "MZ (5S)"},
+            "SELASA": {"8.40 - 9.10": "BM (5S)", "9.30 - 10.00": "KH (4H)", "10.00 - 10.30": "KH (4H)", "10.30 - 11.00": "MZ (5S)", "11.00 - 11.30": "3M (3S)", "11.30 - 12.00": "3M (3S)"},
+            "RABU": {"8.10 - 8.40": "PJK (1S)", "8.40 - 9.10": "PJK (1S)", "9.30 - 10.00": "3M (3S)", "10.00 - 10.30": "3M (3S)", "11.30 - 12.00": "BM (5S)"},
+            "KHAMIS": {"7.40 - 8.10": "PJK (1S)", "8.10 - 8.40": "PJK (1S)", "8.40 - 9.10": "BM (5S)", "9.30 - 10.00": "3M (3S)", "10.00 - 10.30": "3M (3S)"},
+            "JUMAAT": {"7.40 - 8.10": "KH (4H)", "8.10 - 8.40": "KH (4H)", "8.40 - 9.10": "KH (4H)", "10.30 - 11.00": "3M (3S)", "11.00 - 11.30": "3M (3S)"}
+        },
+        "NURUL UMMI": {
+            "ISNIN": {"8.10 - 8.40": "3M (1S)", "8.40 - 9.10": "3M (1S)", "11.00 - 11.30": "PSK (2H)", "11.30 - 12.00": "PSK (2H)"},
+            "SELASA": {"7.40 - 8.10": "PJK (2H)", "8.10 - 8.40": "PJK (2H)", "10.00 - 10.30": "PSV (4S)", "10.30 - 11.00": "PSV (4S)", "11.00 - 11.30": "3M (1S)", "11.30 - 12.00": "3M (1S)"},
+            "RABU": {"7.40 - 8.10": "3M (1S)", "8.10 - 8.40": "PJK (2H)", "8.40 - 9.10": "PJK (2H)", "11.00 - 11.30": "3M (1S)", "11.30 - 12.00": "3M (1S)"},
+            "KHAMIS": {"8.40 - 9.10": "3M (1S)", "10.00 - 10.30": "PSV (6S)", "10.30 - 11.00": "PSV (6S)", "11.00 - 11.30": "PSK (2H)", "11.30 - 12.00": "PSK (2H)"},
+            "JUMAAT": {"7.40 - 8.10": "PSK (2H)", "8.10 - 8.40": "PSK (2H)", "8.40 - 9.10": "PSK (2H)", "10.30 - 11.00": "3M (1S)", "11.00 - 11.30": "3M (1S)"}
+        }
+    };
+
+    const timeSlots = ["7.40 - 8.10", "8.10 - 8.40", "8.40 - 9.10", "9.30 - 10.00", "10.00 - 10.30", "10.30 - 11.00", "11.00 - 11.30", "11.30 - 12.00", "12.00 - 12.30", "12.30 - 1.00"];
+
+    let absents = [];
+    let manualReliefs = {}; 
+
+    window.onload = function() {
+        const selectName = document.getElementById('inputName');
+        teachers.forEach(t => {
+            let op = document.createElement('option');
+            op.value = t; op.text = t;
+            selectName.add(op);
+        });
+    };
+
+    function getDynamicWorkload(teacherName, day) {
+        const daySched = schedule[teacherName][day] || {};
+        let count = 0;
+        for (let slot in daySched) {
+            if (!daySched[slot].includes("1M1S")) count++;
+        }
+        return count;
+    }
+
+    function updateDay() {
+        const dateVal = document.getElementById('inputDate').value;
+        if(!dateVal) return;
+        const d = new Date(dateVal);
+        const days = ["AHAD", "ISNIN", "SELASA", "RABU", "KHAMIS", "JUMAAT", "SABTU"];
+        document.getElementById('inputDay').value = days[d.getDay()];
+    }
+
+    function addAbsence() {
+        const name = document.getElementById('inputName').value;
+        const day = document.getElementById('inputDay').value;
+        const reason = document.getElementById('inputReason').value;
+        const status = document.getElementById('inputStatus').value;
+       
+        if(!day || day === "Auto-pilih tarikh") { alert("Pilih tarikh!"); return; }
+        if(absents.find(a => a.name === name)) { alert("Guru ini sudah ada!"); return; }
+
+        absents.push({ name, day, reason, status });
+        
+        // Auto-calculate relief ONLY for the newly added teacher to preserve existing manual changes
+        const teacherSched = schedule[name][day] || {};
+        timeSlots.forEach(slot => {
+            if(teacherSched[slot] && status === "Perlu" && !teacherSched[slot].includes("1M1S")) {
+                manualReliefs[`${name}-${slot}`] = findAutoRelief(name, day, slot);
+            }
+        });
+
+        renderTable();
+    }
+
+    function removeAbsence(name) {
+        absents = absents.filter(a => a.name !== name);
+        for (let key in manualReliefs) {
+            if(key.startsWith(name + "-")) delete manualReliefs[key];
+        }
+        renderTable();
+    }
+
+    function renderTable() {
+        const area = document.getElementById('displayArea');
+        area.innerHTML = "";
+        const day = document.getElementById('inputDay').value;
+
+        absents.forEach(abs => {
+            const card = document.createElement('div');
+            card.className = "absent-card";
+           
+            let html = `
+                <div class="absent-header">
+                    <h3>GURU: ${abs.name} (${abs.reason})</h3>
+                    <button class="btn-del-row" onclick="removeAbsence('${abs.name}')">Padam Guru</button>
+                </div>
+                <table>
+                    <tr>
+                        <th width="20%">Waktu</th>
+                        <th width="30%">Subjek & Kelas</th>
+                        <th width="50%">Guru Ganti</th>
+                    </tr>`;
+
+            const teacherSched = schedule[abs.name][abs.day] || {};
+           
+            timeSlots.forEach(slot => {
+                if(teacherSched[slot] && abs.status === "Perlu") {
+                    const sub = teacherSched[slot];
+                    if (sub.includes("1M1S")) return; 
+
+                    const memoryKey = `${abs.name}-${slot}`;
+                    let currentRelief = manualReliefs[memoryKey];
+                   
+                    html += `
+                        <tr>
+                            <td>${slot}</td>
+                            <td>${sub}</td>
+                            <td>
+                                <select class="relief-select" onchange="saveManualRelief('${abs.name}', '${slot}', this.value)">
+                                    ${generateReliefOptions(abs.name, abs.day, slot, currentRelief)}
+                                </select>
+                                <div class="status-badge">${getReliefCount(currentRelief)}/2 slot (Maks 60 min)</div>
+                            </td>
+                        </tr>`;
+                }
+            });
+
+            html += `</table>`;
+            card.innerHTML = html;
+            area.appendChild(card);
+        });
+    }
+
+    function getReliefCount(teacherName) {
+        if (!teacherName || teacherName === "TIADA GURU FREE" || teacherName === "Tidak Perlu Diganti") return 0;
+        let count = 0;
+        for (let key in manualReliefs) {
+            if (manualReliefs[key] === teacherName) count++;
+        }
+        return count;
+    }
+
+    // LOGIK ANTI-CLASH TEGAR: Semak jika guru sedang ganti KELAS LAIN pada waktu yang sama
+    function isAssignedElsewhereAtSameTime(teacherName, slot, currentAbsentTeacher) {
+        if (!teacherName || teacherName === "TIADA GURU FREE" || teacherName === "Tidak Perlu Diganti") return false;
+        
+        for (let key in manualReliefs) {
+            // MemoryKey format: "AbsentName-TimeSlot"
+            if (key.endsWith("-" + slot)) { 
+                const absentInKey = key.substring(0, key.lastIndexOf("-" + slot));
+                // Jika guru tersebut sudah ada dalam memori ganti untuk slot yang sama tetapi untuk guru yang berbeza
+                if (manualReliefs[key] === teacherName && absentInKey !== currentAbsentTeacher) {
+                    return true; 
+                }
+            }
+        }
+        return false;
+    }
+
+    function findAutoRelief(absentName, day, slot) {
+        let candidates = teachers.filter(t => {
+            if(t === absentName) return false;
+            if(absents.find(a => a.name === t)) return false;
+            
+            let hasOwnClass = schedule[t][day] && schedule[t][day][slot] && !schedule[t][day][slot].includes("1M1S");
+            if (hasOwnClass) return false; 
+
+            if(isAssignedElsewhereAtSameTime(t, slot, absentName)) return false; 
+            if(getReliefCount(t) >= 2) return false; 
+
+            return true;
+        });
+
+        candidates.sort((a,b) => getDynamicWorkload(a, day) - getDynamicWorkload(b, day));
+        return candidates.length > 0 ? candidates[0] : "TIADA GURU FREE";
+    }
+
+    function generateReliefOptions(absentName, day, slot, currentSelected) {
+        let dayStr = document.getElementById('inputDay').value;
+        let curWaktu = getDynamicWorkload(currentSelected, dayStr);
+        let html = `<option value="${currentSelected}" selected>${currentSelected} (${curWaktu} waktu)</option>`;
+
+        teachers.forEach(t => {
+            if(t === absentName || t === currentSelected) return;
+
+            let isAbsent = absents.find(a => a.name === t);
+            let hasOwnClass = schedule[t][day] && schedule[t][day][slot] && !schedule[t][day][slot].includes("1M1S");
+            
+            // SEMAKAN ANTI-CLASH MERENTAS SEMUA KELAS
+            let busyElsewhere = isAssignedElsewhereAtSameTime(t, slot, absentName);
+            
+            let reachedLimit = getReliefCount(t) >= 2;
+            let tWaktu = getDynamicWorkload(t, dayStr);
+
+            if (isAbsent || hasOwnClass || busyElsewhere || reachedLimit) {
+                let reason = isAbsent ? "[TIDAK HADIR]" : (hasOwnClass ? "[ADA KELAS]" : (busyElsewhere ? "[SEDANG GANTI KELAS LAIN]" : "[HAD 60 MIN]"));
+                html += `<option value="${t}" disabled>${t} (${tWaktu} waktu) ${reason}</option>`;
+            } else {
+                html += `<option value="${t}">${t} (${tWaktu} waktu) - [${getReliefCount(t)}/2 Slot]</option>`;
+            }
+        });
+
+        if (currentSelected !== "Tidak Perlu Diganti") html += `<option value="Tidak Perlu Diganti">Tidak Perlu Diganti</option>`;
+        if (currentSelected !== "TIADA GURU FREE") html += `<option value="TIADA GURU FREE">TIADA GURU FREE</option>`;
+        
+        return html;
+    }
+
+    function saveManualRelief(absentName, slot, reliefName) {
+        manualReliefs[`${absentName}-${slot}`] = reliefName;
+        renderTable(); 
+    }
+
+    function copyWhatsApp() {
+        const dateStr = document.getElementById('inputDate').value;
+        const dayStr = document.getElementById('inputDay').value;
+        if (!dateStr) { alert("Pilih tarikh!"); return; }
+
+        let text = `*JADUAL GURU GANTI PPKI*\n`;
+        text += `Tarikh: *${dateStr} (${dayStr})*\n`;
+        text += `------------------------------------------\n\n`;
+
+        const cards = document.querySelectorAll('.absent-card');
+        cards.forEach(card => {
+            const header = card.querySelector('.absent-header h3').innerText;
+            text += `*${header}*\n`;
+            const rows = card.querySelectorAll('table tr');
+            rows.forEach((row, index) => {
+                if (index === 0) return;
+                const cols = row.querySelectorAll('td');
+                const time = cols[0].innerText;
+                const subject = cols[1].innerText;
+                const select = cols[2].querySelector('select');
+                const reliefTeacher = select ? select.value : cols[2].innerText;
+                text += `• ${time} | ${subject} -> *${reliefTeacher}*\n`;
+            });
+            text += `\n`;
+        });
+
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Salin ke WhatsApp berjaya!");
+        });
+    }
+
+    function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const dateStr = document.getElementById('inputDate').value;
+        const dayStr = document.getElementById('inputDay').value;
+
+        doc.setFontSize(16);
+        doc.text("Senarai Nama Guru Ganti", 15, 20);
+        doc.setFontSize(12);
+        doc.text(`${dateStr} (${dayStr})`, 15, 27);
+        doc.line(15, 32, 195, 32);
+
+        let finalY = 40;
+        absents.forEach(abs => {
+            doc.setFontSize(10);
+            doc.text(`GURU TIDAK HADIR: ${abs.name} (${abs.reason})`, 15, finalY);
+            let rows = [];
+            const cards = document.querySelectorAll('.absent-card');
+            cards.forEach(card => {
+                if(card.innerText.includes(abs.name)) {
+                    card.querySelectorAll('table tr').forEach((tr, i) => {
+                        if(i > 0) {
+                            let tds = tr.querySelectorAll('td');
+                            let reliefVal = tr.querySelector('select') ? tr.querySelector('select').value : tds[2].innerText;
+                            rows.push([tds[0].innerText, tds[1].innerText, reliefVal]);
+                        }
+                    });
+                }
+            });
+            doc.autoTable({ startY: finalY + 5, head: [['Waktu', 'Subjek & Kelas', 'Guru Mengganti']], body: rows, theme: 'grid' });
+            finalY = doc.lastAutoTable.finalY + 15;
+        });
+
+        doc.save(`Jadual_Ganti_${dateStr}.pdf`);
+    }
+</script>
+
+</body>
+</html>
